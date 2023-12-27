@@ -1,0 +1,2 @@
+__kernel void prefixSum(__global int* data, const int length) {
+}
