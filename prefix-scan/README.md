@@ -12,6 +12,7 @@ For more details, refer to [NVidia's GPU Gems3](https://developer.nvidia.com/gpu
 
 - There is only one block of threads (work group) executing the kernel because there is no point in having work-items distributed between multiple work-groups for this problem.
 - The input data can be stored in the shared memory, which is device dependent.
+- The length of the input data is a power of 2.
 
 ## Getting Started
 

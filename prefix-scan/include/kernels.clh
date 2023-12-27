@@ -43,7 +43,7 @@ __kernel void prefixSum(__global int* data, const int n)
     {
         for (int i = global_id; i < n; i += global_size)
         {
-            if ((i+1) % p == 0)
+            if ((i+1) % p == 0 && (i + p/2) < n)
             {
                 local_data[i + p/2] += local_data[i];
             }
