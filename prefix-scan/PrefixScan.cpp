@@ -1,7 +1,9 @@
-#include <iostream>
 #include "include/Data.h"
 #include "include/common.h"
+#include <iostream>
 #include <string>
+#include <iterator>
+#include <algorithm>
 // OpenCL includes
 #include <CL/cl.h>
 
@@ -67,8 +69,8 @@ int main()
     CHECK_CL_ERROR(err, "Couldn't set arg 2");
 
     // set global and local sizes (grid and block sizes)
-    size_t global_size = 256u;
-    size_t local_size = 256u;
+    size_t global_size = 32u;
+    size_t local_size = 32u;
 
     // enqueue the kernel for execution
     err = clEnqueueNDRangeKernel(queue, kernel_prefix_sum, 1, NULL, &global_size, &local_size, 0, NULL, NULL);
@@ -76,9 +78,14 @@ int main()
 
     // wait until execution of the kernel is over
     err = clFinish(queue);
+    CHECK_CL_ERROR(err, "Couldn't empty the queue");
 
     // read the kernel's output
     clEnqueueReadBuffer(queue, device_data, CL_TRUE, 0, size_in_byte, host_data.data(), 0, NULL, NULL);
+
+    // wait until data is compeletely read from device 
+    err = clFinish(queue);
+    CHECK_CL_ERROR(err, "Couldn't empty the queue");
 
     // Release resources
     clReleaseMemObject(device_data);
@@ -86,10 +93,19 @@ int main()
     clReleaseProgram(program);
     clReleaseContext(context);
     
+    // write the result to disk
+    const std::string output_file_name = "out.txt";
+    std::ofstream out(output_file_name);
+    if (out.is_open())
+    {
+        // copy the content of host_data to disk
+        std::copy(host_data.cbegin(), host_data.cend(), std::ostream_iterator<int>(out, " "));
+        out.close();
+    }
+    else
+    {
+        std::cerr << "Couldn't open the output file" << std::endl;
+    }
 
-    // for (auto i=0u; i<length; ++i)
-    // {
-    //     std::cout << host_data[i] << " ";
-    // }
-    std::cout << std::endl;
+    return 0;
 }
