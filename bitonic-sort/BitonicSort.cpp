@@ -51,6 +51,8 @@ int main()
     std::vector<int> host_data = data;  // copy
     const size_t length = host_data.size();
     const size_t size_in_byte = length * sizeof(decltype(host_data.at(0)));
+    
+    assert((length > 0) && ((length & (length-1)) == 0) && "Invalid Length: length must be positive and a power of two");
     // create buffer(s)
     cl_mem device_data = clCreateBuffer(context, CL_MEM_READ_WRITE, size_in_byte, NULL, &err);
     CHECK_CL_ERROR(err, "Couldn't create the buffer on the GPU");

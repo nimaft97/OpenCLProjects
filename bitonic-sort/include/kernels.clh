@@ -24,6 +24,35 @@ __kernel void bitonicSort(__global int* data, const int n)
     // Synchronize before proceeding
     barrier(CLK_LOCAL_MEM_FENCE);
     
+    for (int seq_len = 2; seq_len <= n; seq_len *= 2)
+    {
+        for (int bitonic_seq_len = seq_len/2; bitonic_seq_len > 0; bitonic_seq_len /= 2)
+        {
+            for (int id = global_id; id < n; id += global_size)
+            {
+                int to_compare_id = (id ^ bitonic_seq_len);
+                if (to_compare_id > id)
+                {
+                    bool first_half = ((id & seq_len) == 0);
+                    if (first_half && (local_data[id] > local_data[to_compare_id]) ||
+                        (!first_half) && (local_data[id] < local_data[to_compare_id]))
+                    {
+                        // swap elements
+                        int tmp = local_data[id];
+                        local_data[id] = local_data[to_compare_id];
+                        local_data[to_compare_id] = tmp;
+                    }
+                }
+            }
+            // synchronize
+            barrier(CLK_LOCAL_MEM_FENCE);
+        }
+        // Synchronize
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+
+    // no need to synchronize again because it is already done in the outer loop above
+
     // Update the global memory with the valid copy of local memory
     for (int i = global_id; i < n; i += global_size)
     {
