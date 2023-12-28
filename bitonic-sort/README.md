@@ -1,10 +1,18 @@
 # Bitonic Sort
 
+This repository features an implementation of the Bitonic Sort algorithm, a highly efficient sorting technique specifically designed for parallel computing environments. Bitonic Sort is renowned for its parallelization capabilities, making it well-suited for applications on graphics processing units (GPUs) and parallel architectures.
 ## Bitonic Sort Overview
+
+Bitonic Sort is a parallel sorting algorithm known for its effectiveness in parallel computing environments, making it particularly suitable for graphics processing units (GPUs) and parallel architectures. Developed as an extension of the Bitonic Sequence concept, the algorithm recursively divides the input sequence into bitonic subsequences and performs sorting operations at each step. The distinguishing feature of Bitonic Sort lies in its ability to efficiently handle sequences of power-of-two lengths, allowing for optimal parallelization.
+
+Bitonic Sort demonstrates a parallel complexity of $O(log^n_2)$, showcasing its efficiency in parallel computing environments. This logarithmic time complexity is a result of the algorithm's recursive nature, where the input sequence undergoes repeated division into bitonic subsequences until the entire array is sorted.
 
 
 ### Assumptions
 
+- There is only one block of threads (work group) executing the kernel because there is no point in having work-items distributed between multiple work-groups for this problem.
+- The input data can be stored in the shared memory, which is device dependent.
+- The length of the input data is a power of 2.
 
 ## Getting Started
 
