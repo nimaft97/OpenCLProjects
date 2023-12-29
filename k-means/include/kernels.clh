@@ -4,21 +4,26 @@
 // function that atomically adds two floats using CAS-loop
 // union is adopted to use variables as uint and float interchangably
 // the reason is CAS-loop and atomic_add do not support float 
-void atomic_add_local(volatile __local float *source, const float operand) {
-    union {
-        unsigned int intVal;
-        float floatVal;
-    } newVal;
- 
-    union {
-        unsigned int intVal;
-        float floatVal;
-    } prevVal;
- 
-    do {
-        prevVal.floatVal = *source;
-        newVal.floatVal = prevVal.floatVal + operand;
-    } while (atomic_cmpxchg((volatile __local unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
+static float atomic_cmpxchg_f32_local(volatile __local float *source, float expected, float val) {
+	union {
+		unsigned int u32;
+		float        f32;
+	} exp_union, val_union, old_union;
+
+	exp_union.f32 = expected;
+	val_union.f32 = val;
+	old_union.u32 = atomic_cmpxchg((volatile __local unsigned int *) source, exp_union.u32, val_union.u32);
+	return old_union.f32;
+}
+
+static float atomic_add_f32_local(volatile __local float *source, float val) {
+	float current_val = *source;
+	float expected;
+	do {
+		expected = current_val;
+		current_val = atomic_cmpxchg_f32_local(source, expected, expected + val);
+	} while (current_val != expected);
+	return current_val;
 }
 
 float squaredEuclideanDist(const float element_a, const float element_b)
@@ -100,7 +105,7 @@ __kernel void kMeans(__global float* data, __global int* cluster_ids,
         {
             const float current_element = local_data[id];
             const int cluster_id = findClosestCentroid(local_centroids, current_element, k);
-            atomic_add_local(&local_cluster_sum[cluster_id], current_element);
+            atomic_add_f32_local(&local_cluster_sum[cluster_id], current_element);
             atomic_add(&local_cluster_size[cluster_id], 1);
             local_cluster_ids[id] = cluster_id;
         }
