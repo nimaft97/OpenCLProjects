@@ -1,9 +1,9 @@
 #define LOCAL_DATA_ARRAY_LENGTH 1024
 #define LOCAL_NUM_CLUSTERS 1024
 
-// function that atomically adds two floats using CAS-loop
+// function that atomically updates a float using CAS-loop
 // union is adopted to use variables as uint and float interchangably
-// the reason is CAS-loop and atomic_add do not support float 
+// the reason is CAS-loop and atomic_add do not support float
 static float atomic_cmpxchg_f32_local(volatile __local float *source, float expected, float val) {
 	union {
 		unsigned int u32;
@@ -16,6 +16,7 @@ static float atomic_cmpxchg_f32_local(volatile __local float *source, float expe
 	return old_union.f32;
 }
 
+// calls atomic_cmpxchg_f32_local repeatedly until request goes through
 static float atomic_add_f32_local(volatile __local float *source, float val) {
 	float current_val = *source;
 	float expected;
