@@ -48,17 +48,26 @@ int main()
     clBuildProgram(program, 1, &device, NULL, NULL, NULL);
     
     // read data
-    std::vector<int> host_data = data;  // copy
+    std::vector<float> host_data = data;  // copy
     const size_t length = host_data.size();
-    const size_t size_in_byte = length * sizeof(decltype(host_data.at(0)));
+    const size_t size_data_in_byte = length * sizeof(decltype(host_data.at(0)));
+    std::vector<int> host_cluster_ids(length);
+    const size_t size_cluster_ids_in_byte = length * sizeof(decltype(host_cluster_ids.at(0)));
+    const int k = 4;  // number of clusters
+    const int max_iterations = 10;  // maximum number of iterations in the K-Means algorithms
+    assert(k < length && "Number of clusters cannot be greater than the number of elements");
     
     assert((length > 0) && ((length & (length-1)) == 0) && "Invalid Length: length must be positive and a power of two");
     // create buffer(s)
-    cl_mem device_data = clCreateBuffer(context, CL_MEM_READ_WRITE, size_in_byte, NULL, &err);
+    // data is read-only
+    cl_mem device_data = clCreateBuffer(context, CL_MEM_READ_ONLY, size_data_in_byte, NULL, &err);
     CHECK_CL_ERROR(err, "Couldn't create the buffer on the GPU");
-    
+    // cluster ids is write-only, so there is no need to write the content from host to device
+    cl_mem device_cluster_ids = clCreateBuffer(context, CL_MEM_WRITE_ONLY, size_cluster_ids_in_byte, NULL, &err);
+    CHECK_CL_ERROR(err, "Couldn't create the buffer on the GPU");
+
     // transfer data to GPU
-    clEnqueueWriteBuffer(queue, device_data, CL_TRUE, 0, size_in_byte, host_data.data(), 0, NULL, NULL);
+    clEnqueueWriteBuffer(queue, device_data, CL_TRUE, 0, size_data_in_byte, host_data.data(), 0, NULL, NULL);
 
     // build kernel(s)
     cl_kernel kernel_k_means = clCreateKernel(program, "kMeans", &err);
@@ -67,8 +76,14 @@ int main()
     // set kernel args
     err = clSetKernelArg(kernel_k_means, 0, sizeof(cl_mem), &device_data);
     CHECK_CL_ERROR(err, "Couldn't set arg 1");
-    clSetKernelArg(kernel_k_means, 1, sizeof(length), &length);
+    err = clSetKernelArg(kernel_k_means, 1, sizeof(cl_mem), &device_cluster_ids);
     CHECK_CL_ERROR(err, "Couldn't set arg 2");
+    clSetKernelArg(kernel_k_means, 2, sizeof(length), &length);
+    CHECK_CL_ERROR(err, "Couldn't set arg 3");
+    clSetKernelArg(kernel_k_means, 3, sizeof(k), &k);
+    CHECK_CL_ERROR(err, "Couldn't set arg 4");
+    clSetKernelArg(kernel_k_means, 4, sizeof(max_iterations), &max_iterations);
+    CHECK_CL_ERROR(err, "Couldn't set arg 5");
 
     // set global and local sizes (grid and block sizes)
     size_t global_size = 32u;
@@ -82,8 +97,8 @@ int main()
     err = clFinish(queue);
     CHECK_CL_ERROR(err, "Couldn't empty the queue");
 
-    // read the kernel's output
-    clEnqueueReadBuffer(queue, device_data, CL_TRUE, 0, size_in_byte, host_data.data(), 0, NULL, NULL);
+    // read the kernel's output (cluster ids), there is no need to read back data as it's unchanged
+    clEnqueueReadBuffer(queue, device_cluster_ids, CL_TRUE, 0, size_cluster_ids_in_byte, host_cluster_ids.data(), 0, NULL, NULL);
 
     // wait until data is compeletely read from device 
     err = clFinish(queue);
@@ -91,6 +106,7 @@ int main()
 
     // Release resources
     clReleaseMemObject(device_data);
+    clReleaseMemObject(device_cluster_ids);
     clReleaseKernel(kernel_k_means);
     clReleaseProgram(program);
     clReleaseContext(context);
@@ -101,7 +117,7 @@ int main()
     if (out.is_open())
     {
         // copy the content of host_data to disk
-        std::copy(host_data.cbegin(), host_data.cend(), std::ostream_iterator<int>(out, " "));
+        std::copy(host_cluster_ids.cbegin(), host_cluster_ids.cend(), std::ostream_iterator<int>(out, " "));
         out.close();
     }
     else

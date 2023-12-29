@@ -1,32 +1,9 @@
 #define LOCAL_DATA_ARRAY_LENGTH 1024
 
-__kernel void kMeans(__global int* data, const int n) 
+int findClosestCentroid(__local int* local_cluster_ids, float)
 {
-    // global_size = local_size
-    // Work-group size
-    const int global_size = get_global_size(0);
-    const int global_id = get_global_id(0);
+}
 
-    // Check if the global_id is within the range of the array
-    if (global_id >= n)
-    {
-        return;
-    }
-
-    // Define and populate local memory
-    // it is assumed that LOCAL_DATA_ARRAY_LENGTH >= n and n is a power of two
-    __local int local_data[LOCAL_DATA_ARRAY_LENGTH];
-    for (int i = global_id; i < n; i += global_size)
-    {
-        // create two copies of global memory
-        local_data[i] = data[i];
-    }
-    // Synchronize before proceeding
-    barrier(CLK_LOCAL_MEM_FENCE);
-
-    // Update the global memory with the valid copy of local memory
-    for (int i = global_id; i < n; i += global_size)
-    {
-        data[i] = local_data[i];
-    }
+__kernel void kMeans(__global float* data, __global int* cluster_ids, const int n, const int k, const int max_iterations) 
+{
 }
