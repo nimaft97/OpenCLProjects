@@ -1,7 +1,5 @@
 # OpenCL Algorithms Repository
 
-## Introduction
-
 Welcome to the OpenCL Algorithms Repository! This repository is a dedicated space for the implementation of essential algorithms in both C++ and OpenCL, focusing on optimizing parallel computing through the power of OpenCL.
 
 ## Projects
