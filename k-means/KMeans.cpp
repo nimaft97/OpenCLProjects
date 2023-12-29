@@ -53,11 +53,12 @@ int main()
     const size_t size_data_in_byte = length * sizeof(decltype(host_data.at(0)));
     std::vector<int> host_cluster_ids(length);
     const size_t size_cluster_ids_in_byte = length * sizeof(decltype(host_cluster_ids.at(0)));
-    const int k = 4;  // number of clusters
-    const int max_iterations = 10;  // maximum number of iterations in the K-Means algorithms
-    assert(k < length && "Number of clusters cannot be greater than the number of elements");
+    const int k = 2;  // number of clusters
+    const int max_iterations = 5;  // maximum number of iterations in the K-Means algorithms
+    const float epsilon = 0.005f;  // threshold for convergence
+    assert(k > 0 && k < length && "Number of clusters cannot be zero or greater than the number of elements");
     
-    assert((length > 0) && ((length & (length-1)) == 0) && "Invalid Length: length must be positive and a power of two");
+    assert((length > 0) && "Invalid Length: length must be positive");
     // create buffer(s)
     // data is read-only
     cl_mem device_data = clCreateBuffer(context, CL_MEM_READ_ONLY, size_data_in_byte, NULL, &err);
@@ -84,6 +85,8 @@ int main()
     CHECK_CL_ERROR(err, "Couldn't set arg 4");
     clSetKernelArg(kernel_k_means, 4, sizeof(max_iterations), &max_iterations);
     CHECK_CL_ERROR(err, "Couldn't set arg 5");
+    clSetKernelArg(kernel_k_means, 5, sizeof(epsilon), &epsilon);
+    CHECK_CL_ERROR(err, "Couldn't set arg 6");
 
     // set global and local sizes (grid and block sizes)
     size_t global_size = 32u;
