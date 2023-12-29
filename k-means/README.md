@@ -1,17 +1,23 @@
 # K-means Clustering
 
+This repository provides an implementation of the K-Means clustering algorithm, a powerful and widely used technique in machine learning and data analysis.
 
 ## K-means Clustering Overview
 
-For more details, refer to [Khronos webpage for Intel sub-group optimized operations](https://registry.khronos.org/OpenCL/extensions/intel/cl_intel_subgroups.html).
+K-Means is an unsupervised learning algorithm that partitions a dataset into K distinct, non-overlapping subsets (clusters). Each data point is assigned to the cluster with the nearest mean, and the algorithm iteratively refines the cluster assignments to converge to a stable solution.
 
-To read more about dynamic parallelism (enqueuing a kernel from the device) introduced by the Khronos group in 2013 at SIGGRAPH, refer to their [webpage](https://www.khronos.org/news/press/khronos-releases-opencl-2.0).
+## Atomic Operations for Floats
+
+The K-Means algorithm relies on atomic operations for floats, which are not directly supported in OpenCL. To overcome this limitation, the implementation cleverly employs Compare-And-Swap (CAS) loops and custom atomic addition functions for floats. The atomic_cmpxchg_f32_local function atomically updates a float using a CAS loop, and the atomic_add_f32_local function performs atomic addition for floats. These functions utilize unions to interchangeably use variables as uint and float, enabling the necessary atomic operations.
+
+An alternative approach to handling atomic operations for floating-point values involves leveraging sub-group operations, particularly the sub_group_reduce_add function. Sub-groups are smaller units within a work-group that can perform operations more efficiently than the entire work-group. The sub_group_reduce_add function is designed to efficiently compute the sum of values across a sub-group. However, there are certain limitations to this approach. The size of the sub-group is not controlable, meaning that it cannot be deterministically used in the implementation. Otherwise, each thread (work-item) could have its own copy of clusters and their members, and in the end, `sub_group_reduce_add` would help put together all pieces of information and update the local memory only once.
+
+For more details, refer to [Khronos webpage for Intel sub-group optimized operations](https://registry.khronos.org/OpenCL/extensions/intel/cl_intel_subgroups.html).
 
 ### Assumptions
 
 - There is only one block of threads (work group) executing the kernel because there is no point in having work-items distributed between multiple work-groups for this problem.
 - The input data can be stored in the shared memory, which is device dependent.
-- The length of the input data is a power of 2.
 
 ## Getting Started
 
