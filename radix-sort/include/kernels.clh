@@ -1,6 +1,6 @@
 #define LOCAL_DATA_ARRAY_LENGTH 1024
 
-__kernel void bitonicSort(__global int* data, const int n) 
+__kernel void radixSort(__global int* data, const int n) 
 {
     // global_size = local_size
     // Work-group size
