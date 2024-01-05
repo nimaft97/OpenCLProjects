@@ -51,6 +51,10 @@ int main()
     std::vector<int> host_data = data;  // copy
     const size_t length = host_data.size();
     const size_t size_in_byte = length * sizeof(decltype(host_data.at(0)));
+    const int max_num = *std::max_element(host_data.cbegin(), host_data.cend());
+    const int min_num = *std::min_element(host_data.cbegin(), host_data.cend());
+    assert (max_num > 0 && min_num >= 0 && "Numbers must be non-negative and max num must be positive");
+    const int max_digit = int(std::log10(max_num)) + 1;
     
     assert((length > 0) && ((length & (length-1)) == 0) && "Invalid Length: length must be positive and a power of two");
     // create buffer(s)
@@ -69,6 +73,8 @@ int main()
     CHECK_CL_ERROR(err, "Couldn't set arg 1");
     clSetKernelArg(kernel_radix_sort, 1, sizeof(length), &length);
     CHECK_CL_ERROR(err, "Couldn't set arg 2");
+    clSetKernelArg(kernel_radix_sort, 2, sizeof(max_digit), &max_digit);
+    CHECK_CL_ERROR(err, "Couldn't set arg 3");
 
     // set global and local sizes (grid and block sizes)
     size_t global_size = 32u;
