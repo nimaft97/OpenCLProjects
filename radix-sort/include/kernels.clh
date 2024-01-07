@@ -23,10 +23,12 @@ __kernel void radixSort(__global int* data, const int n, const int max_digit)
     __local int local_partial_freq[NUM_BUCKETS][MAX_WORK_GROUP_SIZE];
     for (int i = global_id; i < n; i += global_size)
     {
-        // create two copies of global memory
+        // create one copy of global memory
         local_data[0][i] = data[i];
-        local_data[1][i] = data[i];
     }
+    // Synchronize before proceeding
+    barrier(CLK_LOCAL_MEM_FENCE);
+
 
     // number of threads that contribute
     const int num_active_threads = min(n, global_size);
@@ -42,8 +44,8 @@ __kernel void radixSort(__global int* data, const int n, const int max_digit)
     }
     // index of the local array that this thread starts at
     const int index_to_start = global_id * (n / num_active_threads) + min(n % num_active_threads, global_id);
-    // Synchronize before proceeding
-    barrier(CLK_LOCAL_MEM_FENCE);
+    int base = 1;  // indicates which digit is being processed
+    int valid_copy_idx = 0;  // which instance of local_data has valid data
 
     for (int digit_idx = 0; digit_idx < max_digit; ++digit_idx)
     {
@@ -51,18 +53,21 @@ __kernel void radixSort(__global int* data, const int n, const int max_digit)
         // reset local_partial_freq
         for (int i = 0; i < NUM_BUCKETS; ++i)
         {
-            local_partial_freq[i][global_id] = 0;
+            for (int j = global_id; j < MAX_WORK_GROUP_SIZE; j += global_size)
+            {
+                // potential to use SIMD intrinsics
+                // good for auto vectorization
+                local_partial_freq[i][j] = 0;
+            }
         }
-        // sync
-        barrier(CLK_LOCAL_MEM_FENCE);
+        // no need to synchronize because the same thread will need local[][global_id] after this point
 
-        // which instance of local_data has valid data
-        const int valid_copy_idx = digit_idx % 2;
+        valid_copy_idx = digit_idx % 2;
 
         // count and update bucket array (buckket_arr[#buckets][#threads])
         for (int idx = index_to_start; idx < index_to_start + num_elements_to_cover; ++idx)
         {
-            const int bucket = local_data[valid_copy_idx][idx] % 10;
+            const int bucket = ((local_data[valid_copy_idx][idx] / base) % 10);
             local_partial_freq[bucket][global_id]++;
         }
 
@@ -71,20 +76,78 @@ __kernel void radixSort(__global int* data, const int n, const int max_digit)
 
         for (int bucket_idx = 0; bucket_idx < NUM_BUCKETS; ++bucket_idx)
         {
+            /*
+            if (global_id == 0)
+            {
+                for (int i = 1; i < MAX_WORK_GROUP_SIZE; ++i)
+                {
+                    local_partial_freq[bucket_idx][i] += local_partial_freq[bucket_idx][i-1];
+                }
+            }
+            barrier(CLK_LOCAL_MEM_FENCE);
+            */
             // prefix-sum for each bucket on local_partial_freq
-            // ???????????
+            // up-sweep phase
+            for (int p = 2; p <= MAX_WORK_GROUP_SIZE; p *= 2)
+            {
+                for (int i = global_id; i < MAX_WORK_GROUP_SIZE; i += global_size)
+                {
+                    if ((i+1) % p == 0)
+                    {
+                        local_partial_freq[bucket_idx][i] += local_partial_freq[bucket_idx][i - p/2];
+                    }
+                }
+                // sync
+                barrier(CLK_LOCAL_MEM_FENCE);
+            }
+
+            // down-sweep phase
+            for (int p = MAX_WORK_GROUP_SIZE/2; p >= 2; p /= 2)
+            {
+                for (int i = global_id; i < MAX_WORK_GROUP_SIZE; i += global_size)
+                {
+                    if ((i+1) % p == 0 && (i + p/2) < MAX_WORK_GROUP_SIZE)
+                    {
+                        local_partial_freq[bucket_idx][i + p/2] += local_partial_freq[bucket_idx][i];
+                    }
+                }
+                // sync
+                barrier(CLK_LOCAL_MEM_FENCE);
+            }
+        }
+
+        // populate the second local array, place numbers in order
+        // each thread tracks how many numbers from each bucket it has placed in the second local array
+        int occurence_per_bucket[NUM_BUCKETS] = {0};
+        for (int idx_to_read = index_to_start; idx_to_read < index_to_start + num_elements_to_cover; ++idx_to_read)
+        {
+            const int bucket = ((local_data[valid_copy_idx][idx_to_read] / base) % 10);
+            int idx_to_write = occurence_per_bucket[bucket];
+            if (global_id > 0)
+            {
+                idx_to_write += local_partial_freq[bucket][global_id - 1];
+            }
+
+            // inefficient
+            for (int i = 0; i < bucket; ++i)
+            {
+                idx_to_write += local_partial_freq[i][MAX_WORK_GROUP_SIZE-1];
+            }
+            
+            occurence_per_bucket[bucket]++;
+
+            local_data[1 - valid_copy_idx][idx_to_write] = local_data[valid_copy_idx][idx_to_read];
         }
 
         // sync before taking care of the next digit
         barrier(CLK_LOCAL_MEM_FENCE);
+
+        base *= 10;
     }
-    // prefix sum #bucket times
-    // populate the second local array, place numbers in order
-    // repeat until all digits are considered
 
     // Update the global memory with the valid copy of local memory
     for (int i = global_id; i < n; i += global_size)
     {
-        data[i] = local_data[i];
+        data[i] = local_data[1 - valid_copy_idx][i];
     }
 }
