@@ -8,6 +8,8 @@ The implementation involves bitwise extraction of digits, bucketing, local sorti
 
 The provided kernel performs radix sort on an array of integers. It uses shared memory to efficiently perform parallel counting sort for each digit. The algorithm is structured with a series of steps, including counting occurrences per bucket, performing prefix sum using local memory, and placing the numbers in order.
 
+In the OpenCL kernel implemented here, cumulative sums are also calculated in parallel using Prefix-Sum (implemented [here](https://github.com/nimaft97/OpenCLProjects/tree/main/prefix-scan)). Since in OpenCL, dynamic parallelization (work-items being able to launch other kernels) is not yet possible, Prefix-Scan has been integrated into the same kernel to guarantee its parallel execution. 
+
 ### Assumptions
 
 - There is only one block of threads (work group) executing the kernel because there is no point in having work-items distributed between multiple work-groups for this problem.
