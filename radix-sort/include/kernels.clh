@@ -119,6 +119,12 @@ __kernel void radixSort(__global int* data, const int n, const int max_digit)
         // populate the second local array, place numbers in order
         // each thread tracks how many numbers from each bucket it has placed in the second local array
         int occurence_per_bucket[NUM_BUCKETS] = {0};
+        // to store total number of elements to be placed before the first element in each bucket
+        int total_cumulative_elements_before_bucket[NUM_BUCKETS] = {0};
+        for (int i = 1; i < NUM_BUCKETS; ++i)
+        {
+            total_cumulative_elements_before_bucket[i] = total_cumulative_elements_before_bucket[i-1] + local_partial_freq[i-1][MAX_WORK_GROUP_SIZE-1];
+        }
         for (int idx_to_read = index_to_start; idx_to_read < index_to_start + num_elements_to_cover; ++idx_to_read)
         {
             const int bucket = ((local_data[valid_copy_idx][idx_to_read] / base) % 10);
@@ -127,12 +133,8 @@ __kernel void radixSort(__global int* data, const int n, const int max_digit)
             {
                 idx_to_write += local_partial_freq[bucket][global_id - 1];
             }
-
-            // inefficient
-            for (int i = 0; i < bucket; ++i)
-            {
-                idx_to_write += local_partial_freq[i][MAX_WORK_GROUP_SIZE-1];
-            }
+            
+            idx_to_write += total_cumulative_elements_before_bucket[bucket];
             
             occurence_per_bucket[bucket]++;
 
