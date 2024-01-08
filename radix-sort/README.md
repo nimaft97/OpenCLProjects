@@ -1,14 +1,18 @@
 # Radix Sort
 
+This repository includes a parallel implementation of the Radix Sort algorithm using OpenCL for GPU acceleration. Radix Sort is a linear-time sorting algorithm that works by distributing elements into buckets based on their individual digits. 
 
 ## Radix Sort Overview
 
+The implementation involves bitwise extraction of digits, bucketing, local sorting within each bucket, and concatenation steps. Each iteration processes a different bit position (digit), contributing to the overall efficiency of the parallel sorting process.
+
+The provided kernel performs radix sort on an array of integers. It uses shared memory to efficiently perform parallel counting sort for each digit. The algorithm is structured with a series of steps, including counting occurrences per bucket, performing prefix sum using local memory, and placing the numbers in order.
 
 ### Assumptions
 
 - There is only one block of threads (work group) executing the kernel because there is no point in having work-items distributed between multiple work-groups for this problem.
 - The input data can be stored in the shared memory, which is device dependent.
-- The input data consists of signed/unsigned integers
+- The input data consists of unsigned integers
 
 ## Getting Started
 
