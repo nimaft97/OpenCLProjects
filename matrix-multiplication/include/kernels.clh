@@ -1,0 +1,7 @@
+#define LOCAL_DATA_ARRAY_LENGTH 1024
+#define LOCAL_NUM_CLUSTERS 1024
+
+__kernel void matrixMul(__global float* matrix1, __global float* matrix2, __global float* matrix3,
+                        const int dim1_1, const int dim1_2, const int dim2_2) 
+{
+}
