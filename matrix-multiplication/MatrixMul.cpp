@@ -67,7 +67,7 @@ int main()
     // data is read-only
     cl_mem device_data_m1 = clCreateBuffer(context, CL_MEM_READ_ONLY, size_m1_in_byte, NULL, &err);
     CHECK_CL_ERROR(err, "Couldn't create the buffer on the GPU");
-    cl_mem device_data_m2 = clCreateBuffer(context, CL_MEM_READ_ONLY, size_m2_in_byte, NULL, &err);
+    cl_mem device_data_m2 = clCreateBuffer(context, CL_MEM_READ_WRITE, size_m2_in_byte, NULL, &err);
     CHECK_CL_ERROR(err, "Couldn't create the buffer on the GPU");
     // cluster ids is write-only, so there is no need to write the content from host to device
     cl_mem device_data_m3 = clCreateBuffer(context, CL_MEM_WRITE_ONLY, size_m3_in_byte, NULL, &err);
@@ -77,8 +77,18 @@ int main()
     clEnqueueWriteBuffer(queue, device_data_m1, CL_TRUE, 0, size_m1_in_byte, host_data_m1.data(), 0, NULL, NULL);
     clEnqueueWriteBuffer(queue, device_data_m1, CL_TRUE, 0, size_m2_in_byte, host_data_m2.data(), 0, NULL, NULL);
     // build kernel(s)
+    cl_kernel kernel_matrix_tran = clCreateKernel(program, "matrixTranspose", &err);
+    CHECK_CL_ERROR(err, "Couldn't create the matrixTranspose kernel");
     cl_kernel kernel_matrix_mul = clCreateKernel(program, "matrixMul", &err);
     CHECK_CL_ERROR(err, "Couldn't create the matrixMul kernel");
+
+    // set kernel args
+    err = clSetKernelArg(kernel_matrix_tran, 0, sizeof(cl_mem), &device_data_m2);
+    CHECK_CL_ERROR(err, "Couldn't set arg 1");
+    clSetKernelArg(kernel_matrix_tran, 1, sizeof(dim2_1), &dim2_1);
+    CHECK_CL_ERROR(err, "Couldn't set arg 2");
+    clSetKernelArg(kernel_matrix_tran, 2, sizeof(dim2_2), &dim2_2);
+    CHECK_CL_ERROR(err, "Couldn't set arg 3");
 
     // set kernel args
     err = clSetKernelArg(kernel_matrix_mul, 0, sizeof(cl_mem), &device_data_m1);
@@ -99,8 +109,11 @@ int main()
     size_t local_size = 32u;
 
     // enqueue the kernel for execution
+    err = clEnqueueNDRangeKernel(queue, kernel_matrix_tran, 1, NULL, &global_size, &local_size, 0, NULL, NULL);
+    CHECK_CL_ERROR(err, "Couldn't launch the matrixTranspose kernel");
+
     err = clEnqueueNDRangeKernel(queue, kernel_matrix_mul, 1, NULL, &global_size, &local_size, 0, NULL, NULL);
-    CHECK_CL_ERROR(err, "Couldn't launch the kMeans kernel");
+    CHECK_CL_ERROR(err, "Couldn't launch the matrixMul kernel");
 
     // wait until execution of the kernel is over
     err = clFinish(queue);
