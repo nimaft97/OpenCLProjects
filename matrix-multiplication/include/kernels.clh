@@ -1,6 +1,16 @@
 #define LOCAL_DATA_ARRAY_LENGTH 1024
 #define LOCAL_NUM_CLUSTERS 1024
 
+float dotProduct(__local float* p_arr1, __local float* p_arr2, const int n)
+{
+    float ret = 0.0;
+    for (int i = 0; i < n; ++i)
+    {
+        ret += (p_arr1[i] * p_arr2[i]);
+    }
+    return ret;
+}
+
 __kernel void matrixTranspose(__global float* matrix, const int dim1, const int dim2) 
 {
     // global_size = local_size
@@ -22,9 +32,9 @@ __kernel void matrixTranspose(__global float* matrix, const int dim1, const int 
     for (int idx = global_id; idx < dim1 * dim2; idx += global_size)
     {
         const int row = idx / dim2;
-        const int col = idx - (row * dim2);
-        const int new_idx = col * dim1 + row;
-        matrix[new_idx] = local_data[idx];
+        const int col = idx % dim2;
+        const int idx_tran = col * dim1 + row;
+        matrix[idx] = local_data[idx_tran];
     }
     // no need to put a barrier because everything syncs when the kernel ends
 }
@@ -32,4 +42,37 @@ __kernel void matrixTranspose(__global float* matrix, const int dim1, const int 
 __kernel void matrixMul(__global float* matrix1, __global float* matrix2, __global float* matrix3,
                         const int dim1_1, const int dim1_2, const int dim2_2) 
 {
+    // matrices are dim1_1 x dim1_2 and dim2_2 x dim1_2
+    // because the second matrix is transposed
+    
+    // global_size = local_size
+    const int global_size = get_global_size(0);
+    const int global_id = get_global_id(0);
+
+    if (global_id >= max(dim1_1, dim1_2) * max(dim1_2, dim2_2))
+    {
+        return;
+    }
+
+    __local float local_matrix1[LOCAL_DATA_ARRAY_LENGTH];
+    __local float local_matrix2_tran[LOCAL_DATA_ARRAY_LENGTH];
+
+    for (int idx = global_id; idx < dim1_1 * dim1_2; idx += global_size)
+    {
+        local_matrix1[idx] = matrix1[idx];
+    }
+    for (int idx = global_id; idx < dim1_2 * dim2_2; idx += global_size)
+    {
+        local_matrix2_tran[idx] = matrix2[idx];
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    // matrix3 is dim1_1 x dim2_2
+    for (int dest_idx = global_id; dest_idx < dim1_1 * dim2_2; dest_idx += global_size)
+    {
+        const int dest_row = dest_idx / dim2_2;
+        const int dest_col = dest_idx % dim2_2;
+        matrix3[dest_idx] = dotProduct(&local_matrix1[dest_row * dim1_2], &local_matrix2_tran[dest_col * dim1_2], dim1_2);
+    }
+
 }

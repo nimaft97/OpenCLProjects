@@ -75,7 +75,7 @@ int main()
 
     // transfer data to GPU
     clEnqueueWriteBuffer(queue, device_data_m1, CL_TRUE, 0, size_m1_in_byte, host_data_m1.data(), 0, NULL, NULL);
-    clEnqueueWriteBuffer(queue, device_data_m1, CL_TRUE, 0, size_m2_in_byte, host_data_m2.data(), 0, NULL, NULL);
+    clEnqueueWriteBuffer(queue, device_data_m2, CL_TRUE, 0, size_m2_in_byte, host_data_m2.data(), 0, NULL, NULL);
     // build kernel(s)
     cl_kernel kernel_matrix_tran = clCreateKernel(program, "matrixTranspose", &err);
     CHECK_CL_ERROR(err, "Couldn't create the matrixTranspose kernel");
@@ -144,7 +144,7 @@ int main()
         {
             std::copy(host_data_m3.cbegin() + i * dim2_2,
                       host_data_m3.cbegin() + (i+1) * dim2_2,
-                      std::ostream_iterator<int>(out, " "));
+                      std::ostream_iterator<float>(out, " "));
         }
         out.close();
     }
