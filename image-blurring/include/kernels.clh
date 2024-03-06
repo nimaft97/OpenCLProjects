@@ -1,0 +1,5 @@
+#define LOCAL_DATA_ARRAY_LENGTH 1024
+
+__kernel void imageBlurring(__global int* data, const int n) 
+{
+}
