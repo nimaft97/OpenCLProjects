@@ -1,11 +1,18 @@
-#include "include/Data.h"
 #include "include/common.h"
 #include <iostream>
 #include <string>
 #include <iterator>
 #include <algorithm>
+#include <vector>
 // OpenCL includes
 #include <CL/cl.h>
+
+#define STB_IMAGE_IMPLEMENTATION  // needed to enable the STB image implementations
+#include "include/stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION  // needed to enable the STB image write implementations
+#include "include/stb_image_write.h"
+
+#define NUM_CHANNEL 4
 
 int main()
 {
@@ -48,9 +55,21 @@ int main()
     clBuildProgram(program, 1, &device, NULL, NULL, NULL);
     
     // read data
-    std::vector<int> host_data = data;  // copy
+    int width;
+    int height;
+    int bpp;  // bytes per pixel (4)
+    uint8_t* rgb_image = stbi_load("./include/bear.png", &width, &height, &bpp, STBI_rgb_alpha);
+    if (rgb_image == nullptr)
+    {
+        std::cerr << "stbi_load returned null!" << std::endl;
+        clReleaseProgram(program);
+        clReleaseContext(context);
+        return 0;
+    }
+    std::vector<uint8_t> host_data(rgb_image, rgb_image + width * height * NUM_CHANNEL);  // do it for consistency, though it's not required!
     const size_t length = host_data.size();
     const size_t size_in_byte = length * sizeof(decltype(host_data.at(0)));
+    stbi_image_free(rgb_image);  // rgb_image can be freed because host_data has a copy of it
     // create buffer(s)
     cl_mem device_data = clCreateBuffer(context, CL_MEM_READ_WRITE, size_in_byte, NULL, &err);
     CHECK_CL_ERROR(err, "Couldn't create the buffer on the GPU");
@@ -65,8 +84,12 @@ int main()
     // set kernel args
     err = clSetKernelArg(kernel_image_blurring, 0, sizeof(cl_mem), &device_data);
     CHECK_CL_ERROR(err, "Couldn't set arg 1");
-    clSetKernelArg(kernel_image_blurring, 1, sizeof(length), &length);
+    clSetKernelArg(kernel_image_blurring, 1, sizeof(width), &width);
     CHECK_CL_ERROR(err, "Couldn't set arg 2");
+    clSetKernelArg(kernel_image_blurring, 2, sizeof(height), &height);
+    CHECK_CL_ERROR(err, "Couldn't set arg 3");
+    clSetKernelArg(kernel_image_blurring, 3, sizeof(bpp), &bpp);
+    CHECK_CL_ERROR(err, "Couldn't set arg 4");
 
     // set global and local sizes (grid and block sizes)
     size_t global_size = 32u;
@@ -94,18 +117,8 @@ int main()
     clReleaseContext(context);
     
     // write the result to disk
-    const std::string output_file_name = "out.txt";
-    std::ofstream out(output_file_name);
-    if (out.is_open())
-    {
-        // copy the content of host_data to disk
-        std::copy(host_data.cbegin(), host_data.cend(), std::ostream_iterator<int>(out, " "));
-        out.close();
-    }
-    else
-    {
-        std::cerr << "Couldn't open the output file" << std::endl;
-    }
+    const std::string output_file_name = "out.png";
+    stbi_write_png(output_file_name.c_str(), width, height, NUM_CHANNEL, host_data.data(), width * NUM_CHANNEL);
 
     return 0;
 }
