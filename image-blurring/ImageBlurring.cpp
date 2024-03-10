@@ -91,8 +91,6 @@ int main()
     CHECK_CL_ERROR(err, "Couldn't set arg 2");
     clSetKernelArg(kernel_image_blurring, 2, sizeof(height), &height);
     CHECK_CL_ERROR(err, "Couldn't set arg 3");
-    clSetKernelArg(kernel_image_blurring, 3, sizeof(bpp), &bpp);
-    CHECK_CL_ERROR(err, "Couldn't set arg 4");
 
     // print max available threads per dimension for the selected device
     size_t max_work_item_size[3];

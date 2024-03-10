@@ -1,5 +1,38 @@
 #define LOCAL_DATA_ARRAY_LENGTH 1024
 
-__kernel void imageBlurring(__global int* data, const int width, const int height, const int bpp) 
+__kernel void imageBlurring(__global uchar4* data, const uint width, const uint height) 
 {
+    // global_size = local_size
+    const uint2 global_size = {get_global_size(0), get_global_size(1)};
+    const uint2 thread_idx = {get_global_id(0), get_global_id(1)};
+
+    if (thread_idx.y * width + thread_idx.x >= width * height)
+    {
+        return;
+    }
+
+    // define local array
+    __local uchar4 local_data[LOCAL_DATA_ARRAY_LENGTH * LOCAL_DATA_ARRAY_LENGTH];
+    // copy data from global to local
+    for (uint i = thread_idx.x; i < width; i += global_size.x)
+    {
+        for (uint j = thread_idx.y; j < height; j += global_size.y)
+        {
+            const uint pixel = j * width + i;
+            local_data[pixel] = data[pixel];
+        }
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);  // sync
+
+
+
+    // copy data back from local to global
+    for (uint i = thread_idx.x; i < width; i += global_size.x)
+    {
+        for (uint j = thread_idx.y; j < height; j += global_size.y)
+        {
+            const uint pixel = j * width + i;
+            local_data[pixel] = data[pixel];
+        }
+    }
 }
