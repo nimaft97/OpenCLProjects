@@ -73,12 +73,24 @@ int main()
     const size_t length = host_data.size();
     const size_t size_in_byte = length * sizeof(decltype(host_data.at(0)));
     stbi_image_free(rgb_image);  // rgb_image can be freed because host_data has a copy of it
+
+    // prepare Gaussian kernel weights
+    // weights follow the Gaussian distribution and can be generated automatically
+    // since this is not the focus of this code, numbers are hard-coded
+    // vector below is the first row/column of the Gaussian Blur matrix
+    const std::vector<float> gaussian_kernel_weights = {1.0/16.0, 2.0/16.0, 1.0/16.0};
+    const size_t gaussian_kernel_size = gaussian_kernel_weights.size();
+
     // create buffer(s)
     cl_mem device_data = clCreateBuffer(context, CL_MEM_READ_WRITE, size_in_byte, NULL, &err);
     CHECK_CL_ERROR(err, "Couldn't create the buffer on the GPU");
-    
+
+    cl_mem device_kernel_weights = clCreateBuffer(context, CL_MEM_READ_ONLY, gaussian_kernel_size*sizeof(float), NULL, &err);
+    CHECK_CL_ERROR(err, "Couldn't create the buffer on the GPU");
+
     // transfer data to GPU
     clEnqueueWriteBuffer(queue, device_data, CL_TRUE, 0, size_in_byte, host_data.data(), 0, NULL, NULL);
+    clEnqueueWriteBuffer(queue, device_kernel_weights, CL_TRUE, 0, gaussian_kernel_size*sizeof(float), gaussian_kernel_weights.data(), 0, NULL, NULL);
 
     // build kernel(s)
     cl_kernel kernel_image_blurring = clCreateKernel(program, "imageBlurring", &err);
@@ -91,6 +103,10 @@ int main()
     CHECK_CL_ERROR(err, "Couldn't set arg 2");
     clSetKernelArg(kernel_image_blurring, 2, sizeof(height), &height);
     CHECK_CL_ERROR(err, "Couldn't set arg 3");
+    clSetKernelArg(kernel_image_blurring, 3, sizeof(cl_mem), &device_kernel_weights);
+    CHECK_CL_ERROR(err, "Couldn't set arg 4");
+    clSetKernelArg(kernel_image_blurring, 4, sizeof(gaussian_kernel_size), &gaussian_kernel_size);
+    CHECK_CL_ERROR(err, "Couldn't set arg 5");
 
     // print max available threads per dimension for the selected device
     size_t max_work_item_size[3];

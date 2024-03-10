@@ -1,6 +1,6 @@
 #define LOCAL_DATA_ARRAY_LENGTH 1024
 
-__kernel void imageBlurring(__global uchar4* data, const uint width, const uint height) 
+__kernel void imageBlurring(__global uchar4* data, const uint width, const uint height, __global float* kernel_weights, const uint kernel_size) 
 {
     // global_size = local_size
     const uint2 global_size = {get_global_size(0), get_global_size(1)};
