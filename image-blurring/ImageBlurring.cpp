@@ -66,6 +66,9 @@ int main()
         clReleaseContext(context);
         return 0;
     }
+    // print image info
+    std::cout << "image loaded with width: " << width << ", height: " << height << ", bpp: " << bpp << std::endl;
+
     std::vector<uint8_t> host_data(rgb_image, rgb_image + width * height * NUM_CHANNEL);  // do it for consistency, though it's not required!
     const size_t length = host_data.size();
     const size_t size_in_byte = length * sizeof(decltype(host_data.at(0)));
@@ -91,12 +94,18 @@ int main()
     clSetKernelArg(kernel_image_blurring, 3, sizeof(bpp), &bpp);
     CHECK_CL_ERROR(err, "Couldn't set arg 4");
 
+    // print max available threads per dimension for the selected device
+    size_t max_work_item_size[3];
+    clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(max_work_item_size), max_work_item_size, NULL);
+    std::cout << "Max threads available in X: " << max_work_item_size[0] << ", Y: " << max_work_item_size[1] << ", Z: " << max_work_item_size[2] << std::endl;
+
     // set global and local sizes (grid and block sizes)
-    size_t global_size = 32u;
-    size_t local_size = 32u;
+    // MAX number of threads is 512, so setting each dimention to 16 since 16x16 < 512
+    size_t global_size[] = {16u, 16u};
+    size_t local_size[] = {16u, 16u};
 
     // enqueue the kernel for execution
-    err = clEnqueueNDRangeKernel(queue, kernel_image_blurring, 1, NULL, &global_size, &local_size, 0, NULL, NULL);
+    err = clEnqueueNDRangeKernel(queue, kernel_image_blurring, 2, NULL, &global_size[0], &local_size[0], 0, NULL, NULL);
     CHECK_CL_ERROR(err, "Couldn't launch the prefixSum kernel");
 
     // wait until execution of the kernel is over
