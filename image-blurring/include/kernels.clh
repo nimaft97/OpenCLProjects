@@ -1,4 +1,4 @@
-#define LOCAL_DATA_ARRAY_LENGTH 1024
+#define MAX_LOCAL_MEMORY_SIZE_BYTE 65536
 
 __kernel void imageBlurring(__global uchar4* data, const uint width, const uint height, __global float* kernel_weights, const uint kernel_size) 
 {
@@ -6,33 +6,88 @@ __kernel void imageBlurring(__global uchar4* data, const uint width, const uint 
     const uint2 global_size = {get_global_size(0), get_global_size(1)};
     const uint2 thread_idx = {get_global_id(0), get_global_id(1)};
 
-    if (thread_idx.y * width + thread_idx.x >= width * height)
+    if (thread_idx.y >= height && thread_idx.x >= width)
     {
         return;
     }
 
-    // define local array
-    __local uchar4 local_data[LOCAL_DATA_ARRAY_LENGTH * LOCAL_DATA_ARRAY_LENGTH];
-    // copy data from global to local
-    for (uint i = thread_idx.x; i < width; i += global_size.x)
+    // define local array with max size
+    // length of data is global_arr_length
+    // length of local_data is local_arr_length
+    const uint global_arr_length = width * height;
+    const uint local_arr_length = (MAX_LOCAL_MEMORY_SIZE_BYTE / 16) / 2;
+    const uint global_to_local_ratio = global_arr_length / local_arr_length;
+    const uint local_height = local_arr_length / width;
+    const int kernel_radius = kernel_size / 2u;
+    __local uchar4 local_data[2][local_arr_length];
+
+    for (uint step = 0; step < global_to_local_ratio; ++step)
     {
-        for (uint j = thread_idx.y; j < height; j += global_size.y)
+        // calculate height range
+        const uint min_height = step * local_height;
+        const uint max_height = min(height, (step + 1) * local_height);
+
+        // copy global to local[0]
+        for (uint j = min_height + thread_idx.y; j < max_height; j += global_size.y)
         {
-            const uint pixel = j * width + i;
-            local_data[pixel] = data[pixel];
+            for (uint i = thread_idx.x; i < width; i += global_size.x)
+            {
+                const uint global_pixel =  j * width + i;
+                const uint local_pixel = (j - min_height) * width + i;
+                local_data[0][local_pixel] = data[global_pixel];
+            }
         }
-    }
-    barrier(CLK_LOCAL_MEM_FENCE);  // sync
+        barrier(CLK_LOCAL_MEM_FENCE);  // sync
 
 
 
-    // copy data back from local to global
-    for (uint i = thread_idx.x; i < width; i += global_size.x)
-    {
-        for (uint j = thread_idx.y; j < height; j += global_size.y)
+        // horizontal pass
+        for (uint j = thread_idx.y; j < (max_height - min_height); j += global_size.y)
         {
-            const uint pixel = j * width + i;
-            local_data[pixel] = data[pixel];
+            for (uint i = thread_idx.x; i < width; i += global_size.x)
+            {
+                const uint pixel = j * width + i;
+                float4 sum = (float4)(0.0f);
+                for (int kernel_idx = -kernel_radius; kernel_idx <= kernel_radius; ++kernel_idx)
+                {
+                    const uint tmp_i = clamp(i + kernel_idx, 0u, width - 1);
+                    const uint tmp_pixel = j * width + tmp_i;
+                    sum += (convert_float4(local_data[0][tmp_pixel]) * kernel_weights[kernel_radius + kernel_idx]);
+                }
+                local_data[1][pixel] = convert_uchar4(clamp(sum, 0.0f, 255.0f));
+            }
+        }
+        barrier(CLK_LOCAL_MEM_FENCE);  // sync
+
+
+        // vertical pass
+        for (uint j = thread_idx.y; j < (max_height - min_height); j += global_size.y)
+        {
+            for (uint i = thread_idx.x; i < width; i += global_size.x)
+            {
+                const uint pixel = j * width + i;
+                float4 sum = (float4)(0.0f);
+                for (int kernel_idx = -kernel_radius; kernel_idx <= kernel_radius; ++kernel_idx)
+                {
+                    const uint tmp_j = clamp(j + kernel_idx, 0u, max_height - min_height - 1);
+                    const uint tmp_pixel = tmp_j * width + i;
+                    sum += (convert_float4(local_data[1][tmp_pixel]) * kernel_weights[kernel_radius + kernel_idx]);
+                }
+                local_data[0][pixel] = convert_uchar4(clamp(sum, 0.0f, 255.0f));
+            }
+        }
+        barrier(CLK_LOCAL_MEM_FENCE);  // sync
+
+
+        // copy local[0] to global
+        for (uint j = min_height + thread_idx.y; j < max_height; j += global_size.y)
+        {
+            for (uint i = thread_idx.x; i < width; i += global_size.x)
+            {
+                const uint global_pixel =  j * width + i;
+                const uint local_pixel = (j - min_height) * width + i;
+                data[global_pixel] = local_data[0][local_pixel];
+            }
         }
     }
 }

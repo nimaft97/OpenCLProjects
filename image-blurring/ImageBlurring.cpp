@@ -78,7 +78,7 @@ int main()
     // weights follow the Gaussian distribution and can be generated automatically
     // since this is not the focus of this code, numbers are hard-coded
     // vector below is the first row/column of the Gaussian Blur matrix
-    const std::vector<float> gaussian_kernel_weights = {1.0/16.0, 2.0/16.0, 1.0/16.0};
+    const std::vector<float> gaussian_kernel_weights = {0.25f, 0.5f, 0.25f};
     const size_t gaussian_kernel_size = gaussian_kernel_weights.size();
 
     // create buffer(s)
@@ -112,6 +112,13 @@ int main()
     size_t max_work_item_size[3];
     clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(max_work_item_size), max_work_item_size, NULL);
     std::cout << "Max threads available in X: " << max_work_item_size[0] << ", Y: " << max_work_item_size[1] << ", Z: " << max_work_item_size[2] << std::endl;
+
+    // print max local memory size
+    // Get the maximum local memory size per workgroup
+    size_t max_local_mem_size;
+    clGetDeviceInfo(device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(cl_ulong), &max_local_mem_size, NULL);
+    std::cout << "Max local memory size in bytes is: " << max_local_mem_size << std::endl;
+
 
     // set global and local sizes (grid and block sizes)
     // MAX number of threads is 512, so setting each dimention to 16 since 16x16 < 512
