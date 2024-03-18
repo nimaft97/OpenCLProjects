@@ -1,12 +1,30 @@
 # Image Blurring
 
 
+Image blurring, also known as image smoothing or image softening, is a fundamental technique in image processing aimed at reducing noise and detail in an image. By averaging the pixel values in the vicinity of each pixel, blurring creates a smoother appearance, effectively suppressing high-frequency components while preserving the overall structure and important features of the image.
 
-## Image Blurring Overview
+Gaussian image blurring is a specific method of image smoothing that utilizes a Gaussian filter kernel to achieve the blurring effect. Unlike simpler averaging techniques, such as box blur, Gaussian blurring applies a weighted average to the pixels surrounding each target pixel, with the weights determined by a Gaussian distribution. This distribution assigns higher weights to pixels closer to the target pixel and lower weights to those farther away, resulting in a smooth, bell-shaped falloff of influence.
+
+## GPU Gaussian Image Blurring Overview
+
+
+The GPU-accelerated method employed in this Gaussian Image Blurring approach has been finely tuned by dividing the grid into separate horizontal and vertical 1D convolutions. This strategic decomposition enhances data access efficiency and minimizes redundant read operations. To expedite data retrieval, the input image is segmented into smaller sections that fit within the local memory. While this optimization accelerates processing, it introduces an additional layer of approximation since the input image is fragmented into smaller, distinct images before reassembly post-kernel execution.
+
+For more information on the technique used in this implementation and other common techniques for image blurring, visit [intel's website](https://www.intel.com/content/www/us/en/developer/articles/technical/an-investigation-of-fast-real-time-gpu-based-image-blur-algorithms.html).
+
+## Example
+
+Input image:
+![sample-input](https://github.com/nimaft97/OpenCLProjects/tree/main/image-blurring/images/sample-in.png)
+
+Output image (kernel size = 3):
+![sample-output](https://github.com/nimaft97/OpenCLProjects/tree/main/image-blurring/images/sample-out.png)
 
 
 ### Assumptions
 
+- Global array is big enough that the input image can be completely transferred to GPU
+- Input image as RGBA so it's read as an array of 4 uchars
 
 ## Getting Started
 
