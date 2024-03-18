@@ -15,10 +15,10 @@ For more information on the technique used in this implementation and other comm
 ## Example
 
 Input image:
-![sample-input](https://github.com/nimaft97/OpenCLProjects/tree/main/image-blurring/images/sample-in.png)
+![sample-input](https://github.com/nimaft97/OpenCLProjects/blob/main/image-blurring/images/bear-in.png)
 
 Output image (kernel size = 3):
-![sample-output](https://github.com/nimaft97/OpenCLProjects/tree/main/image-blurring/images/sample-out.png)
+![sample-output](https://github.com/nimaft97/OpenCLProjects/blob/main/image-blurring/images/bear-out.png)
 
 
 ### Assumptions
