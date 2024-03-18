@@ -25,6 +25,7 @@ Output image (kernel size = 3):
 
 - Global array is big enough that the input image can be completely transferred to GPU
 - Input image as RGBA so it's read as an array of 4 uchars
+- Length of the gaussian kernel cannot be more than 29
 
 ## Getting Started
 
