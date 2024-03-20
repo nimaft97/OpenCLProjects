@@ -3,7 +3,7 @@
 
 float linear(const float input)
 {
-    return (input < 0.0f) ? 0.0 : input;
+    return input;
 }
 
 __kernel void forwardPass(__global float* data, __global float* weights, __global float* out, const uint num_in_nodes, const uint num_out_nodes) 
