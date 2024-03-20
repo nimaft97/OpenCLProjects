@@ -1,7 +1,7 @@
 #define MAX_NODES_PER_LAYER 30
 #define MAX_WEIGHTS_BETWEEN_LAYERS 900
 
-float ReLU(const float input)
+float linear(const float input)
 {
     return (input < 0.0f) ? 0.0 : input;
 }
@@ -41,6 +41,6 @@ __kernel void forwardPass(__global float* data, __global float* weights, __globa
             sum += local_in_data[j] * local_weights[j * num_out_nodes + i];
         }
         // it's assumed that there is no bias to be added
-        out[i] = ReLU(sum);
+        out[i] = linear(sum);
     }
 }
