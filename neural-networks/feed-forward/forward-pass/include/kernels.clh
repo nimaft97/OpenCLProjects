@@ -1,0 +1,46 @@
+#define MAX_NODES_PER_LAYER 30
+#define MAX_WEIGHTS_BETWEEN_LAYERS 900
+
+float ReLU(const float input)
+{
+    return (input < 0.0f) ? 0.0 : input;
+}
+
+__kernel void forwardPass(__global float* data, __global float* weights, __global float* out, const uint num_in_nodes, const uint num_out_nodes) 
+{
+    const uint global_size = get_global_size(0);
+    const uint global_id = get_global_id(0);
+
+    if (global_id >= num_out_nodes && global_id >= num_in_nodes)
+    {
+        return;
+    }
+
+    // dewclare the local data
+    __local float local_in_data[MAX_NODES_PER_LAYER];
+    __local float local_weights[MAX_WEIGHTS_BETWEEN_LAYERS];
+    const uint num_outgoing_weights = num_out_nodes;
+
+    // copy global input data to local data
+    for (uint i = global_id; i < num_in_nodes; i += global_size)
+    {
+        local_in_data[i] = data[i];
+        for (uint j = i * num_outgoing_weights; j < (i + 1) * num_outgoing_weights; ++j)
+        {
+            local_weights[j] = weights[j];
+        }
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);  // sync
+
+    // perform the feed forward operation
+    for (uint i = global_id; i < num_out_nodes; i += global_size)
+    {
+        float sum = 0.0f;
+        for (uint j = 0; j < num_in_nodes; ++j)
+        {
+            sum += local_in_data[j] * local_weights[j * num_out_nodes + i];
+        }
+        // it's assumed that there is no bias to be added
+        out[i] = ReLU(sum);
+    }
+}
