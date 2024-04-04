@@ -8,6 +8,6 @@ To understand fundamentals of Feedforward Neural Netowrks, refer to the [stanfor
 
 ## Models
 
-1. [Forward Pass](https://github.com/nimaft97/OpenCLProjects/tree/main/neural-networks/feed-forward)
+1. [Forward Pass](https://github.com/nimaft97/OpenCLProjects/tree/main/neural-networks/feed-forward/forward-pass)
 2. Back Propagation (Coming Soon ...)
 3. Parameter Tuning (Coming Soon ...)
